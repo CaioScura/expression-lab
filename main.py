@@ -3,6 +3,40 @@ import cv2
 import mediapipe as mp
 import math
 
+#para salvar os gestos em uma tabela CSV
+import csv
+
+#verificar se o arquivo existe
+import os
+
+#import do json de gestos
+import json
+
+
+
+with open("gestos.json", "r", encoding="utf-8") as arquivo:
+    gestos_cadastrados = json.load(arquivo)
+
+for nome_gesto, dados in gestos_cadastrados.items():
+    caminho_imagem = dados["imagem"]
+
+    if os.path.exists(caminho_imagem):
+        print(f"{nome_gesto}: imagem encontrada!")
+    else:
+        print(f"{nome_gesto}: imagem NÃO encontrada em {caminho_imagem}")
+
+
+# Exemplos coletados para treinar o classificador
+dados_treinamento = []
+coletando_gesto = False
+
+#controlar intervalo entre os registros de gestos
+ultimo_registro_ms = 0
+INTERVALO_REGISTRO_MS = 200
+
+
+#nome do gesto
+nome_gesto_atual = ""
 
 def calcular_angulo(a, b, c):
     vetor_ba = (a.x - b.x, a.y - b.y)
@@ -73,6 +107,46 @@ def transformar_em_vetor(caracteristicas):
         caracteristicas["anelar"]["angulo"],
         caracteristicas["minimo"]["angulo"]
     ]
+
+#funcao que recebe um vetor e o nome do gesto, monta um registro e o adiciona à lista
+def registrar_exemplo(vetor, nome_gesto):
+    exemplo = {
+        "caracteristicas": vetor,
+        "gesto": nome_gesto
+    }
+
+    dados_treinamento.append(exemplo)
+
+
+#funcao que salva os dados coletados em um arquivo CSV
+def salvar_dados_csv():
+    caminho_arquivo = "dados_gestos.csv"
+    arquivo_existe = os.path.exists(caminho_arquivo)
+
+    with open(
+        caminho_arquivo,
+        "a",
+        newline="",
+        encoding="utf-8"
+    ) as arquivo:
+        escritor = csv.writer(arquivo)
+
+        if not arquivo_existe:
+            escritor.writerow([
+                "indicador",
+                "medio",
+                "anelar",
+                "minimo",
+                "gesto"
+            ])
+
+        for exemplo in dados_treinamento:
+            escritor.writerow(
+                exemplo["caracteristicas"]
+                + [exemplo["gesto"]]
+            )
+
+    print("Dados adicionados em dados_gestos.csv")
 
 
 def classificar_gesto(caracteristicas):
@@ -337,8 +411,56 @@ with (
 
         cv2.imshow("Expression Lab - Deteccao Facial", frame)
 
-        if cv2.waitKey(1) & 0xFF == ord("q"):
+        
+        tecla = cv2.waitKey(1) & 0xFF
+
+        
+        
+        
+        if tecla == ord("c"):
+            coletando_gesto = not coletando_gesto
+
+            if coletando_gesto:
+                nome_gesto_atual = input(
+                    "Digite o nome do gesto que deseja cadastrar: "
+                ).strip()
+
+                if not nome_gesto_atual:
+                    print("Nome inválido. Coleta não iniciada.")
+                    coletando_gesto = False
+                else:
+                    dados_treinamento = []
+                    ultimo_registro_ms = 0
+                    print(
+                        f"Coleta iniciada para: {nome_gesto_atual}"
+                    )
+            else:
+                print(
+                    f"Coleta encerrada. "
+                    f"Exemplos registrados: {len(dados_treinamento)}"
+                )
+
+        
+        elif coletando_gesto:
+            tempo_atual_ms = cv2.getTickCount() / cv2.getTickFrequency() * 1000
+
+            if (
+                resultado_maos.hand_landmarks
+                and tempo_atual_ms - ultimo_registro_ms >= INTERVALO_REGISTRO_MS
+            ):
+                mao = resultado_maos.hand_landmarks[0]
+
+                caracteristicas = extrair_caracteristicas_mao(mao)
+                vetor = transformar_em_vetor(caracteristicas)
+
+                registrar_exemplo(vetor, nome_gesto_atual)
+
+                ultimo_registro_ms = tempo_atual_ms
+
+
+        if tecla == ord("q"):
             break
 
     camera.release()
+    salvar_dados_csv()
     cv2.destroyAllWindows()
