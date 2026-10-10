@@ -3,7 +3,99 @@ import cv2
 import mediapipe as mp
 import math
 
+
+def calcular_angulo(a, b, c):
+    vetor_ba = (a.x - b.x, a.y - b.y)
+    vetor_bc = (c.x - b.x, c.y - b.y)
+
+    produto_escalar = (
+        vetor_ba[0] * vetor_bc[0]
+        + vetor_ba[1] * vetor_bc[1]
+    )
+
+    norma_ba = math.hypot(*vetor_ba)
+    norma_bc = math.hypot(*vetor_bc)
+
+    if norma_ba == 0 or norma_bc == 0:
+        return 0
+
+    cosseno = produto_escalar / (norma_ba * norma_bc)
+    cosseno = max(-1, min(1, cosseno))
+
+    return math.degrees(math.acos(cosseno))
+
+
+
+def calcular_angulo_dedo(mao, pontos):
+    articulacao_media = mao[pontos[1]]
+    articulacao_superior = mao[pontos[2]]
+    ponta = mao[pontos[3]]
+
+    return calcular_angulo(
+        articulacao_media,
+        articulacao_superior,
+        ponta
+    )
+
+
+def dedo_estendido(mao, pontos):
+    angulo = calcular_angulo_dedo(mao, pontos)
+
+    return angulo > 160
+
+
+def extrair_caracteristicas_mao(mao):
+    pontos_dedos = {
+        "indicador": (5, 6, 7, 8),
+        "medio": (9, 10, 11, 12),
+        "anelar": (13, 14, 15, 16),
+        "minimo": (17, 18, 19, 20)
+    }
+
+    caracteristicas = {}
+
+    for dedo, pontos in pontos_dedos.items():
+        angulo = calcular_angulo_dedo(mao, pontos)
+
+        caracteristicas[dedo] = {
+            "angulo": angulo,
+            "estendido": angulo > 160
+        }
+
+    return caracteristicas
+
+
+
+def transformar_em_vetor(caracteristicas):
+    return [
+        caracteristicas["indicador"]["angulo"],
+        caracteristicas["medio"]["angulo"],
+        caracteristicas["anelar"]["angulo"],
+        caracteristicas["minimo"]["angulo"]
+    ]
+
+
+def classificar_gesto(caracteristicas):
+    indicador = caracteristicas["indicador"]["estendido"]
+    medio = caracteristicas["medio"]["estendido"]
+    anelar = caracteristicas["anelar"]["estendido"]
+    minimo = caracteristicas["minimo"]["estendido"]
+
+    dedos = [indicador, medio, anelar, minimo]
+
+    if all(dedos):
+        return "Mao aberta"
+
+    if not any(dedos):
+        return "Mao fechada"
+
+    if indicador and not medio and not anelar and not minimo:
+        return "Indicador levantado"
+
+    return "Gesto nao identificado"
+
 from mediapipe.tasks.python.vision import HandLandmarksConnections
+
 
 # Caminho do modelo facial
 CAMINHO_MODELO = "models/face_landmarker.task"
@@ -78,7 +170,69 @@ with (
         # Desenha os pontos e as conexoes das maos
         altura, largura, _ = frame.shape
 
-        for mao in resultado_maos.hand_landmarks:
+        for mao in resultado_maos.hand_landmarks:    
+            # Seleciona os pontos do indicador
+            base_indicador = mao[5]
+            articulacao_media = mao[6]
+            articulacao_superior = mao[7]
+            ponta_indicador = mao[8]
+
+
+           # Extrai as caracteristicas da mao 
+            caracteristicas = extrair_caracteristicas_mao(mao)
+
+            vetor = transformar_em_vetor(caracteristicas)
+            print(vetor)
+
+            indicador = caracteristicas["indicador"]["estendido"]
+            medio = caracteristicas["medio"]["estendido"]
+            anelar = caracteristicas["anelar"]["estendido"]
+            minimo = caracteristicas["minimo"]["estendido"]
+
+
+            # Classifica o gesto da mao com base nos dedos estendidos
+            gesto = classificar_gesto(caracteristicas)
+
+
+            # Mostra o gesto detectado na tela
+            cv2.putText(
+                frame,
+                f"Gesto: {gesto}",
+                (20, 180),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                (0, 255, 0),
+                2
+            )
+            
+            
+            
+            texto_dedos = (
+                f"Indicador: {indicador} | Medio: {medio}"
+            )
+
+            cv2.putText(
+                frame,
+                texto_dedos,
+                (20, 110),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.65,
+                (0, 255, 255),
+                2
+            )
+
+            texto_outros = f"Anelar: {anelar} | Minimo: {minimo}"
+
+            cv2.putText(
+                frame,
+                texto_outros,
+                (20, 140),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.65,
+                (0, 255, 255),
+                2
+            )
+
             # Desenha as conexoes entre os pontos
             for conexao in HandLandmarksConnections.HAND_CONNECTIONS:
                 inicio = mao[conexao.start]
