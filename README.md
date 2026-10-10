@@ -201,7 +201,19 @@ O nome no `gestos.json` e o nome devolvido pela regra precisam ser **idênticos*
 
 ## Tecnologias
 
-- [Python 3.12](https://www.python.org/)
-- [MediaPipe](https://ai.google.dev/edge/mediapipe/solutions/guide): `HandLandmarker` e `FaceLandmarker`, com blendshapes
-- [OpenCV](https://opencv.org/)
-- [NumPy](https://numpy.org/)
+| Tecnologia | Para que foi usada |
+|---|---|
+| [Python 3.12](https://www.python.org/) | Linguagem do projeto |
+| [MediaPipe](https://ai.google.dev/edge/mediapipe/solutions/guide) | Pontos das mãos e do rosto, e blendshapes de expressão |
+| [OpenCV](https://opencv.org/) | Webcam, janelas, redimensionamento e desenho |
+| [NumPy](https://numpy.org/) | Fundo das imagens na janela de exibição |
+
+---
+
+## Aprendizados
+
+- Usar os pontos (landmarks) do MediaPipe para montar regras de gestos.
+- Geometria aplicada: ângulo entre vetores para saber se um dedo está esticado, e distâncias relativas ao tamanho do rosto.
+- Estabilizar a detecção, exigindo que o gesto se repita por alguns frames.
+- Refatorar um script grande em módulos, com configurações centralizadas e sem variáveis globais.
+- Gerenciar dependências e evitar conflitos entre pacotes (`opencv-python` × `opencv-contrib-python`).
