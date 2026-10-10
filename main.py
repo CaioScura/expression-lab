@@ -17,13 +17,30 @@ import json
 with open("gestos.json", "r", encoding="utf-8") as arquivo:
     gestos_cadastrados = json.load(arquivo)
 
+# Carrega as imagens uma unica vez: {nome do gesto: imagem}
+imagens_gestos = {}
+
 for nome_gesto, dados in gestos_cadastrados.items():
     caminho_imagem = dados["imagem"]
+    imagem = cv2.imread(caminho_imagem)
 
-    if os.path.exists(caminho_imagem):
-        print(f"{nome_gesto}: imagem encontrada!")
+    if imagem is not None:
+        imagens_gestos[nome_gesto] = imagem
+        print(f"{nome_gesto}: imagem carregada!")
     else:
-        print(f"{nome_gesto}: imagem NÃO encontrada em {caminho_imagem}")
+        print(f"{nome_gesto}: não foi possível carregar {caminho_imagem}")
+
+# Nome da janela onde a imagem do gesto sera exibida
+JANELA_IMAGEM = "Imagem do gesto"
+janela_imagem_aberta = False
+
+
+
+# Quantos frames seguidos o gesto precisa aparecer para trocar a imagem
+FRAMES_PARA_CONFIRMAR = 5
+gesto_candidato = None
+frames_mesmo_gesto = 0
+
 
 
 # Exemplos coletados para treinar o classificador
@@ -78,6 +95,17 @@ def dedo_estendido(mao, pontos):
     return angulo > 160
 
 
+def polegar_estendido(mao):
+    base_minimo = (mao[17].x, mao[17].y)
+    ponta = (mao[4].x, mao[4].y)
+    base_polegar = (mao[2].x, mao[2].y)
+
+    distancia_ponta = math.dist(ponta, base_minimo)
+    distancia_base = math.dist(base_polegar, base_minimo)
+
+    return distancia_ponta > distancia_base * 1.2
+
+
 def extrair_caracteristicas_mao(mao):
     pontos_dedos = {
         "indicador": (5, 6, 7, 8),
@@ -95,6 +123,10 @@ def extrair_caracteristicas_mao(mao):
             "angulo": angulo,
             "estendido": angulo > 160
         }
+
+    caracteristicas["polegar"] = {
+        "estendido": polegar_estendido(mao)
+    }
 
     return caracteristicas
 
@@ -154,8 +186,16 @@ def classificar_gesto(caracteristicas):
     medio = caracteristicas["medio"]["estendido"]
     anelar = caracteristicas["anelar"]["estendido"]
     minimo = caracteristicas["minimo"]["estendido"]
+    polegar = caracteristicas["polegar"]["estendido"]
 
     dedos = [indicador, medio, anelar, minimo]
+
+    # Os nomes precisam ser iguais as chaves do gestos.json
+    if polegar and minimo and not indicador and not medio and not anelar:
+        return "Hang loose"
+
+    if polegar and indicador and not medio and not anelar and not minimo:
+        return "Faz o L"
 
     if all(dedos):
         return "Mao aberta"
@@ -244,7 +284,12 @@ with (
         # Desenha os pontos e as conexoes das maos
         altura, largura, _ = frame.shape
 
-        for mao in resultado_maos.hand_landmarks:    
+
+        # Gesto com imagem cadastrada encontrado neste frame
+        gesto_com_imagem = None
+
+
+        for mao in resultado_maos.hand_landmarks:
             # Seleciona os pontos do indicador
             base_indicador = mao[5]
             articulacao_media = mao[6]
@@ -266,6 +311,9 @@ with (
 
             # Classifica o gesto da mao com base nos dedos estendidos
             gesto = classificar_gesto(caracteristicas)
+
+            if gesto in imagens_gestos:
+                gesto_com_imagem = gesto
 
 
             # Mostra o gesto detectado na tela
@@ -295,7 +343,11 @@ with (
                 2
             )
 
-            texto_outros = f"Anelar: {anelar} | Minimo: {minimo}"
+            polegar = caracteristicas["polegar"]["estendido"]
+
+            texto_outros = (
+                f"Anelar: {anelar} | Minimo: {minimo} | Polegar: {polegar}"
+            )
 
             cv2.putText(
                 frame,
@@ -335,6 +387,21 @@ with (
                     (0, 255, 255),
                     -1
                 )
+
+
+        if gesto_com_imagem == gesto_candidato:
+            frames_mesmo_gesto += 1
+        else:
+            gesto_candidato = gesto_com_imagem
+            frames_mesmo_gesto = 1
+
+        if frames_mesmo_gesto == FRAMES_PARA_CONFIRMAR:
+            if gesto_candidato is not None:
+                cv2.imshow(JANELA_IMAGEM, imagens_gestos[gesto_candidato])
+                janela_imagem_aberta = True
+            elif janela_imagem_aberta:
+                cv2.destroyWindow(JANELA_IMAGEM)
+                janela_imagem_aberta = False
 
 
         # Desenha os pontos encontrados do rosto
