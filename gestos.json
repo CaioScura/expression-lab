@@ -1,9 +1,41 @@
-
 {
     "Hang loose": {
         "imagem": "imagens/hang-loose.png"
     },
     "Faz o L": {
         "imagem": "imagens/faz-o-l.jpg"
+    },
+    "Indicador levantado": {
+        "imagem": "imagens/macaco-ideia.png"
+    },
+    "Gato apontando": {
+        "imagem": "imagens/gato-apontando.png"
+    },
+    "Gato frente": {
+        "imagem": "imagens/gato-frente.png"
+    },
+    "Gato mao na boca": {
+        "imagem": "imagens/gato-mao-boca.png"
+    },
+    "Gato nojo": {
+        "imagem": "imagens/gato-nojo.jpg"
+    },
+    "Kojima cinema": {
+        "imagem": "imagens/kojima-cinema.png"
+    },
+    "Maos pra cima": {
+        "imagem": "imagens/maos-pra-cima.png"
+    },
+    "Nao grita": {
+        "imagem": "imagens/nao-grita.jpg"
+    },
+    "Olhando de lado": {
+        "imagem": "imagens/olhando-de-lado.png"
+    },
+    "Olhar assustado": {
+        "imagem": "imagens/olhar-assustado.jpg"
+    },
+    "Pensativo": {
+        "imagem": "imagens/pensativo.jpg"
     }
 }

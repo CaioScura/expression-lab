@@ -10,7 +10,11 @@ from config import (
 )
 from coleta import alternar_coleta, coletar_exemplo, encerrar_coleta
 from desenho import desenhar_mao, mostrar_info_mao
-from exibicao import ExibidorImagem, carregar_imagens_gestos
+from exibicao import (
+    ExibidorImagem,
+    carregar_imagem_padrao,
+    carregar_imagens_gestos,
+)
 from gestos import classificar_gesto, extrair_caracteristicas_mao
 from rosto import processar_rosto
 
@@ -74,7 +78,10 @@ def processar_maos(frame, resultado_maos, exibidor):
 
 # ===== Programa principal =====
 def main():
-    exibidor = ExibidorImagem(carregar_imagens_gestos())
+    exibidor = ExibidorImagem(
+        carregar_imagens_gestos(),
+        carregar_imagem_padrao()
+    )
 
     # Estado da coleta de exemplos (tecla "c")
     estado_coleta = {
