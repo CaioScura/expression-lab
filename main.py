@@ -4,19 +4,20 @@ import cv2
 import mediapipe as mp
 
 from config import (
+    CAMINHO_IMAGEM_OCIOSA,
+    CAMINHO_IMAGEM_PADRAO,
     CAMINHO_MODELO_MAOS,
     CAMINHO_MODELO_ROSTO,
     JANELA_PRINCIPAL,
 )
-from coleta import alternar_coleta, coletar_exemplo, encerrar_coleta
-from desenho import desenhar_mao, mostrar_info_mao
+from desenho import desenhar_mao, mostrar_gesto
 from exibicao import (
     ExibidorImagem,
-    carregar_imagem_padrao,
+    carregar_imagem_obrigatoria,
     carregar_imagens_gestos,
 )
-from gestos import classificar_gesto, extrair_caracteristicas_mao
-from rosto import processar_rosto
+from reconhecimento import reconhecer_gesto
+from rosto import desenhar_rosto, extrair_info_rosto
 
 
 # ===== Configuracao do MediaPipe =====
@@ -37,7 +38,9 @@ opcoes_maos = HandLandmarkerOptions(
 opcoes_rosto = FaceLandmarkerOptions(
     base_options=BaseOptions(model_asset_path=CAMINHO_MODELO_ROSTO),
     running_mode=RunningMode.VIDEO,
-    num_faces=1
+    num_faces=1,
+    # Notas de 0 a 1 para expressoes (boca aberta, olhos arregalados...)
+    output_face_blendshapes=True
 )
 
 
@@ -58,38 +61,13 @@ def detectar(frame, detector_rosto, detector_maos, tempo_ms):
     return resultado_rosto, resultado_maos
 
 
-#Funcao para processar as maos, classificar o gesto e desenhar na tela o gesto caso tenha
-def processar_maos(frame, resultado_maos, exibidor):
-    altura, largura, _ = frame.shape
-    gesto_com_imagem = None
-
-    for mao in resultado_maos.hand_landmarks:
-        caracteristicas = extrair_caracteristicas_mao(mao)
-        gesto = classificar_gesto(caracteristicas)
-
-        if exibidor.tem_imagem(gesto):
-            gesto_com_imagem = gesto
-
-        mostrar_info_mao(frame, caracteristicas, gesto)
-        desenhar_mao(frame, mao, largura, altura)
-
-    return gesto_com_imagem
-
-
 # ===== Programa principal =====
 def main():
     exibidor = ExibidorImagem(
         carregar_imagens_gestos(),
-        carregar_imagem_padrao()
+        carregar_imagem_obrigatoria(CAMINHO_IMAGEM_PADRAO),
+        carregar_imagem_obrigatoria(CAMINHO_IMAGEM_OCIOSA)
     )
-
-    # Estado da coleta de exemplos (tecla "c")
-    estado_coleta = {
-        "ativa": False,
-        "nome_gesto": "",
-        "dados": [],
-        "ultimo_registro_ms": 0
-    }
 
     with (
         FaceLandmarker.create_from_options(opcoes_rosto) as detector_rosto,
@@ -116,27 +94,30 @@ def main():
                 frame, detector_rosto, detector_maos, tempo_ms
             )
 
-            gesto_com_imagem = processar_maos(frame, resultado_maos, exibidor)
-            exibidor.atualizar(gesto_com_imagem)
+            altura, largura, _ = frame.shape
+            maos = resultado_maos.hand_landmarks
 
-            processar_rosto(frame, resultado_rosto)
+            # Decide o gesto juntando maos e rosto
+            info_rosto = extrair_info_rosto(resultado_rosto, largura, altura)
+            gesto = reconhecer_gesto(maos, info_rosto, largura, altura)
+
+            # So manda para a janela de imagens gestos que tem imagem
+            if exibidor.tem_imagem(gesto):
+                exibidor.atualizar(gesto)
+            else:
+                exibidor.atualizar(None)
+
+            # Desenha tudo no frame da camera
+            for mao in maos:
+                desenhar_mao(frame, mao, largura, altura)
+
+            desenhar_rosto(frame, resultado_rosto)
+            mostrar_gesto(frame, gesto)
 
             cv2.imshow(JANELA_PRINCIPAL, frame)
 
-            tecla = cv2.waitKey(1) & 0xFF
-
-            if tecla == ord("q"):
+            if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
-
-            if tecla == ord("c"):
-                alternar_coleta(estado_coleta)
-            elif estado_coleta["ativa"]:
-                coletar_exemplo(estado_coleta, resultado_maos)
-                
-
-        # Se saiu com a coleta ainda ativa, salva o que foi coletado
-        if estado_coleta["ativa"]:
-            encerrar_coleta(estado_coleta)
 
         camera.release()
         cv2.destroyAllWindows()

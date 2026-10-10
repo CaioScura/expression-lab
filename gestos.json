@@ -8,11 +8,17 @@
     "Indicador levantado": {
         "imagem": "imagens/macaco-ideia.png"
     },
+    "Gato joia": {
+        "imagem": "imagens/gato-dando-joia.png"
+    },
+    "Mario dedo do meio": {
+        "imagem": "imagens/mario-dedo-meio.jpg"
+    },
+    "Macaco maos na cabeca": {
+        "imagem": "imagens/macaco-maos-atras-da-cabeca.png"
+    },
     "Gato apontando": {
         "imagem": "imagens/gato-apontando.png"
-    },
-    "Gato frente": {
-        "imagem": "imagens/gato-frente.png"
     },
     "Gato mao na boca": {
         "imagem": "imagens/gato-mao-boca.png"

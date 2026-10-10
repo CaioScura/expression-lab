@@ -25,32 +25,9 @@ def para_pixels(ponto, largura, altura):
     return int(ponto.x * largura), int(ponto.y * altura)
 
 
-def mostrar_info_mao(frame, caracteristicas, gesto):
-    indicador = caracteristicas["indicador"]["estendido"]
-    medio = caracteristicas["medio"]["estendido"]
-    anelar = caracteristicas["anelar"]["estendido"]
-    minimo = caracteristicas["minimo"]["estendido"]
-    polegar = caracteristicas["polegar"]["estendido"]
-
-
-    #mostra o gesto e o estado dos dedos na tela
-    escrever_texto(frame, f"Gesto: {gesto}", (20, 180))
-
-    escrever_texto(
-        frame,
-        f"Indicador: {indicador} | Medio: {medio}",
-        (20, 110),
-        cor=AMARELO,
-        tamanho=0.65
-    )
-
-    escrever_texto(
-        frame,
-        f"Anelar: {anelar} | Minimo: {minimo} | Polegar: {polegar}",
-        (20, 140),
-        cor=AMARELO,
-        tamanho=0.65
-    )
+def mostrar_gesto(frame, gesto):
+    #mostra so o nome do gesto reconhecido ("-" quando nao ha nenhum)
+    escrever_texto(frame, f"Gesto: {gesto or '-'}", (20, 40))
 
 
 def desenhar_mao(frame, mao, largura, altura):

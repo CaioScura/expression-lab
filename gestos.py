@@ -75,16 +75,20 @@ def extrair_caracteristicas_mao(mao):
 
 
 
-def transformar_em_vetor(caracteristicas):
-    return [
-        caracteristicas["indicador"]["angulo"],
-        caracteristicas["medio"]["angulo"],
-        caracteristicas["anelar"]["angulo"],
-        caracteristicas["minimo"]["angulo"]
-    ]
+def polegar_para_cima(mao):
+    return mao[4].y < mao[3].y < mao[2].y and mao[4].y < mao[5].y
 
 
-def classificar_gesto(caracteristicas):
+def indicador_horizontal(mao):
+    deslocamento_x = abs(mao[8].x - mao[5].x)
+    deslocamento_y = abs(mao[8].y - mao[5].y)
+
+    return deslocamento_x > deslocamento_y
+
+
+def classificar_gesto(mao):
+    caracteristicas = extrair_caracteristicas_mao(mao)
+
     indicador = caracteristicas["indicador"]["estendido"]
     medio = caracteristicas["medio"]["estendido"]
     anelar = caracteristicas["anelar"]["estendido"]
@@ -92,13 +96,21 @@ def classificar_gesto(caracteristicas):
     polegar = caracteristicas["polegar"]["estendido"]
 
     dedos = [indicador, medio, anelar, minimo]
+    so_indicador = indicador and not medio and not anelar and not minimo
 
-    # Os nomes precisam ser iguais as chaves do gestos.json
+
+    #mesmos nomes usados no gestos.json
     if polegar and minimo and not indicador and not medio and not anelar:
         return "Hang loose"
 
-    if polegar and indicador and not medio and not anelar and not minimo:
+    if polegar and so_indicador:
         return "Faz o L"
+
+    if polegar and not any(dedos) and polegar_para_cima(mao):
+        return "Gato joia"
+
+    if medio and not indicador and not anelar and not minimo:
+        return "Mario dedo do meio"
 
     if all(dedos):
         return "Mao aberta"
@@ -106,7 +118,10 @@ def classificar_gesto(caracteristicas):
     if not any(dedos):
         return "Mao fechada"
 
-    if indicador and not medio and not anelar and not minimo:
+    if so_indicador:
+        if indicador_horizontal(mao):
+            return "Gato apontando"
+
         return "Indicador levantado"
 
     return "Gesto nao identificado"
